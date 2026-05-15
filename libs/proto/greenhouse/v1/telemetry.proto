@@ -23,6 +23,17 @@ message IngestReadingsResponse {
   uint32 rejected = 2;
 }
 
+// One streamed reading. buf's STANDARD lint requires every RPC to own a
+// dedicated, uniquely named request/response message.
+message StreamReadingsRequest {
+  SensorReading reading = 1;
+}
+
+message StreamReadingsResponse {
+  uint32 accepted = 1;
+  uint32 rejected = 2;
+}
+
 message GetLatestReadingRequest {
   string sensor_id = 1;
 }
@@ -38,7 +49,7 @@ service TelemetryService {
   rpc IngestReadings(IngestReadingsRequest) returns (IngestReadingsResponse);
 
   // Client-streaming push for always-connected edge devices.
-  rpc StreamReadings(stream SensorReading) returns (IngestReadingsResponse);
+  rpc StreamReadings(stream StreamReadingsRequest) returns (StreamReadingsResponse);
 
   // Latest reading for a sensor, consumed by the api-gateway.
   rpc GetLatestReading(GetLatestReadingRequest) returns (GetLatestReadingResponse);

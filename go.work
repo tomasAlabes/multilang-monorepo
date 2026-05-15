@@ -1,7 +1,8 @@
-go 1.24
+go 1.25.0
 
-// Go workspace mode: intra-repo modules resolve to their local source,
-// so no `replace` directives are needed in the individual go.mod files.
+// Go workspace: unifies the modules for one-shot `go build ./...` from the
+// repo root and for IDE cross-module navigation. Each service's go.mod also
+// carries replace directives so it builds standalone in CI and Docker.
 use (
 	./libs/common-go
 	./libs/models-go

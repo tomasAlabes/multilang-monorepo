@@ -10,13 +10,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@greenhouse/models": ["libs/models-ts/src/index.ts"],
-      "@greenhouse/common": ["libs/common-ts/src/index.ts"],
-      "@greenhouse/ui": ["libs/ui/src/index.ts"]
-    }
+    "skipLibCheck": true
   },
+  "//": "Cross-package imports (@greenhouse/*) resolve via pnpm workspace symlinks to each package's built dist + package.json exports — no tsconfig paths. Nx's dependsOn ^build guarantees dependencies are built first.",
   "exclude": ["node_modules", "dist", ".next"]
 }

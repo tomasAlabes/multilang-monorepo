@@ -17,7 +17,7 @@ plugins:
     out: libs/models-go/gen
     opt: paths=source_relative
   # TypeScript: protobuf-es messages -> libs/models-ts
-  - remote: buf.build/bufbuild/es:v2
+  - remote: buf.build/bufbuild/es
     out: libs/models-ts/src/gen
     opt: target=ts
   # Python: messages + gRPC stubs -> libs/models-py

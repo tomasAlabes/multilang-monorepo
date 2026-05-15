@@ -1,6 +1,6 @@
 # Build context is the repo ROOT (see docker-compose.yml) so the build can
 # see go.work and the intra-repo modules this service depends on.
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 
 # Copy the workspace file and only the modules this service needs.

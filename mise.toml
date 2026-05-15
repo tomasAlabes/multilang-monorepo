@@ -3,7 +3,7 @@
 [tools]
 node = "22"
 pnpm = "9"
-go = "1.24"
+go = "1.25"
 python = "3.12"
 uv = "latest"
 buf = "latest"

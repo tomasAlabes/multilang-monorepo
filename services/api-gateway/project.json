@@ -9,7 +9,7 @@
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/internal/graph"],
       "options": {
-        "command": "go run github.com/99designs/gqlgen generate",
+        "command": "go tool gqlgen generate",
         "cwd": "services/api-gateway"
       }
     },

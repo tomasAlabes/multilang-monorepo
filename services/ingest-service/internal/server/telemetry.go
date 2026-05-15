@@ -42,15 +42,15 @@ func (s *TelemetryServer) StreamReadings(
 ) error {
 	var accepted uint32
 	for {
-		reading, err := stream.Recv()
+		req, err := stream.Recv()
 		if err == io.EOF {
-			return stream.SendAndClose(&greenhousev1.IngestReadingsResponse{Accepted: accepted})
+			return stream.SendAndClose(&greenhousev1.StreamReadingsResponse{Accepted: accepted})
 		}
 		if err != nil {
 			return err
 		}
-		// TODO: persist reading.
-		_ = reading
+		// TODO: persist req.GetReading().
+		_ = req
 		accepted++
 	}
 }
