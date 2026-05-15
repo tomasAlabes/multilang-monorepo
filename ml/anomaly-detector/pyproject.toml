@@ -1,0 +1,27 @@
+[project]
+name = "anomaly-detector"
+version = "0.0.0"
+description = "ML service that scores greenhouse telemetry for anomalies."
+requires-python = ">=3.12"
+dependencies = [
+  "greenhouse-models",
+  "greenhouse-common",
+  "grpcio>=1.67",
+  "numpy>=2.0",
+  "scikit-learn>=1.5",
+]
+
+# Intra-repo dependencies resolve to the local workspace members.
+[tool.uv.sources]
+greenhouse-models = { workspace = true }
+greenhouse-common = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/anomaly_detector"]

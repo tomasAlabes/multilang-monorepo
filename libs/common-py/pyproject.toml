@@ -1,0 +1,15 @@
+[project]
+name = "greenhouse-common"
+version = "0.0.0"
+description = "Shared Python utilities for the greenhouse services."
+requires-python = ">=3.12"
+dependencies = [
+  "structlog>=24.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/greenhouse_common"]

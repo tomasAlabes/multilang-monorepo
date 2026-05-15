@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package greenhouse.v1;
+
+// Core domain model for greenhouse monitoring.
+//
+// This file is the single source of truth for the shared domain types.
+// `buf generate` produces the equivalent Go, TypeScript and Python types
+// in libs/models-go, libs/models-ts and libs/models-py.
+
+// A physical greenhouse containing one or more climate zones.
+message Greenhouse {
+  string id = 1;
+  string name = 2;
+  string location = 3;
+  repeated Zone zones = 4;
+}
+
+// A controlled climate area within a greenhouse, growing a single crop.
+message Zone {
+  string id = 1;
+  string greenhouse_id = 2;
+  string name = 3;
+  string crop = 4;
+  repeated Sensor sensors = 5;
+}
+
+// The kind of measurement a sensor reports.
+enum SensorType {
+  SENSOR_TYPE_UNSPECIFIED = 0;
+  SENSOR_TYPE_TEMPERATURE = 1;
+  SENSOR_TYPE_HUMIDITY = 2;
+  SENSOR_TYPE_SOIL_MOISTURE = 3;
+  SENSOR_TYPE_CO2 = 4;
+  SENSOR_TYPE_LIGHT = 5;
+}
+
+// A physical sensor installed in a zone.
+message Sensor {
+  string id = 1;
+  string zone_id = 2;
+  SensorType type = 3;
+  // Unit of measure, e.g. "celsius", "%RH", "ppm", "lux".
+  string unit = 4;
+}

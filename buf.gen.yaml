@@ -1,0 +1,27 @@
+# `buf generate` fans the proto sources out into three language-specific
+# "models" libraries. Remote plugins keep contributors from installing
+# protoc plugins locally. `clean: true` removes stale generated files.
+version: v2
+clean: true
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/greenhouse-monorepo/libs/models-go/gen
+plugins:
+  # Go: messages + gRPC stubs -> libs/models-go
+  - remote: buf.build/protocolbuffers/go
+    out: libs/models-go/gen
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: libs/models-go/gen
+    opt: paths=source_relative
+  # TypeScript: protobuf-es messages -> libs/models-ts
+  - remote: buf.build/bufbuild/es:v2
+    out: libs/models-ts/src/gen
+    opt: target=ts
+  # Python: messages + gRPC stubs -> libs/models-py
+  - remote: buf.build/protocolbuffers/python
+    out: libs/models-py/src
+  - remote: buf.build/grpc/python
+    out: libs/models-py/src

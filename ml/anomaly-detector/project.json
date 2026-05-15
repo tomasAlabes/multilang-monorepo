@@ -1,0 +1,34 @@
+{
+  "name": "anomaly-detector",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:ml", "lang:python"],
+  "implicitDependencies": ["models-py", "common-py"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "uv run ruff check ml/anomaly-detector" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "uv run pytest ml/anomaly-detector" }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": { "command": "uv build --package anomaly-detector" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run --package anomaly-detector python -m anomaly_detector.server"
+      }
+    },
+    "container": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -f ml/anomaly-detector/Dockerfile -t greenhouse/anomaly-detector .",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

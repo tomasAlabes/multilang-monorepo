@@ -1,0 +1,43 @@
+name: Codegen Verify
+
+# Generated protobuf code is committed to the repo (see libs/models-*/README).
+# This job regenerates it and fails if the working tree changes -- i.e. a
+# .proto file was edited without re-running `buf generate`. It also enforces
+# lint, formatting, and backwards-compatibility on the contracts themselves.
+on:
+  pull_request:
+    paths:
+      - 'libs/proto/**'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Lint protos
+        run: buf lint
+
+      - name: Check proto formatting
+        run: buf format --diff --exit-code
+
+      - name: Detect breaking changes against main
+        run: buf breaking --against '.git#branch=main'
+
+      - name: Regenerate code
+        run: buf generate
+
+      - name: Fail if generated code is stale
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated code is out of date. Run 'buf generate' and commit the result."
+            exit 1
+          fi

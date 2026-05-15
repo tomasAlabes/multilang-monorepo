@@ -1,0 +1,73 @@
+# Public-facing API contract.
+#
+# Served by the Go api-gateway (Backend-for-Frontend pattern). The gateway
+# resolves these types by fanning out to the internal gRPC services. The
+# Next.js dashboard is the only consumer.
+
+scalar DateTime
+
+enum SensorType {
+  TEMPERATURE
+  HUMIDITY
+  SOIL_MOISTURE
+  CO2
+  LIGHT
+}
+
+enum AnomalySeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+type Greenhouse {
+  id: ID!
+  name: String!
+  location: String!
+  zones: [Zone!]!
+}
+
+type Zone {
+  id: ID!
+  name: String!
+  crop: String!
+  sensors: [Sensor!]!
+}
+
+type Sensor {
+  id: ID!
+  type: SensorType!
+  unit: String!
+  latestReading: SensorReading
+}
+
+type SensorReading {
+  sensorId: ID!
+  type: SensorType!
+  value: Float!
+  unit: String!
+  observedAt: DateTime!
+}
+
+type Anomaly {
+  sensorId: ID!
+  severity: AnomalySeverity!
+  description: String!
+  score: Float!
+  detectedAt: DateTime!
+}
+
+type Query {
+  greenhouses: [Greenhouse!]!
+  greenhouse(id: ID!): Greenhouse
+  anomalies(greenhouseId: ID!): [Anomaly!]!
+}
+
+type Mutation {
+  registerSensor(zoneId: ID!, type: SensorType!, unit: String!): Sensor!
+}
+
+type Subscription {
+  # Live sensor readings for a zone, backed by a gRPC stream.
+  readings(zoneId: ID!): SensorReading!
+}

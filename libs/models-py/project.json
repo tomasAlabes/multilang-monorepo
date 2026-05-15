@@ -1,0 +1,14 @@
+{
+  "name": "models-py",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:models", "lang:python"],
+  "implicitDependencies": ["proto"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["proto:codegen"],
+      "options": { "command": "uv build --package greenhouse-models" }
+    }
+  }
+}

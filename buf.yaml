@@ -1,0 +1,11 @@
+# Buf v2 configuration. The proto sources live in libs/proto and are the
+# single source of truth for every gRPC contract and shared domain model.
+version: v2
+modules:
+  - path: libs/proto
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

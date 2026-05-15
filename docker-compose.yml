@@ -1,0 +1,61 @@
+# Local end-to-end stack. `docker compose up` builds every service from its
+# per-module Dockerfile. In a structured scaffold the Dockerfiles are real
+# but the service logic is intentionally minimal.
+name: greenhouse
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: greenhouse
+      POSTGRES_PASSWORD: greenhouse
+    ports:
+      - "5432:5432"
+
+  nats:
+    image: nats:2-alpine
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+
+  ingest-service:
+    build:
+      context: .
+      dockerfile: services/ingest-service/Dockerfile
+    depends_on: [timescaledb, nats]
+    environment:
+      GRPC_PORT: "50051"
+      DATABASE_URL: postgres://postgres:greenhouse@timescaledb:5432/greenhouse
+    ports:
+      - "50051:50051"
+
+  anomaly-detector:
+    build:
+      context: .
+      dockerfile: ml/anomaly-detector/Dockerfile
+    environment:
+      GRPC_PORT: "50052"
+    ports:
+      - "50052:50052"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    depends_on: [ingest-service, anomaly-detector]
+    environment:
+      HTTP_PORT: "8080"
+      INGEST_ADDR: ingest-service:50051
+      ANOMALY_ADDR: anomaly-detector:50052
+    ports:
+      - "8080:8080"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    depends_on: [api-gateway]
+    environment:
+      NEXT_PUBLIC_GRAPHQL_URL: http://localhost:8080/query
+    ports:
+      - "3000:3000"

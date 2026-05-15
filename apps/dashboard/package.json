@@ -1,0 +1,29 @@
+{
+  "name": "dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "codegen": "graphql-codegen"
+  },
+  "dependencies": {
+    "@greenhouse/common": "workspace:*",
+    "@greenhouse/models": "workspace:*",
+    "@greenhouse/ui": "workspace:*",
+    "graphql": "^16.9.0",
+    "graphql-request": "^7.1.0",
+    "next": "15.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.3",
+    "@graphql-codegen/client-preset": "^4.4.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "5.6.2"
+  }
+}

@@ -1,0 +1,10 @@
+go 1.24
+
+// Go workspace mode: intra-repo modules resolve to their local source,
+// so no `replace` directives are needed in the individual go.mod files.
+use (
+	./libs/common-go
+	./libs/models-go
+	./services/api-gateway
+	./services/ingest-service
+)

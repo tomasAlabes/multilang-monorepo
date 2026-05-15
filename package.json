@@ -1,0 +1,21 @@
+{
+  "name": "@greenhouse/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "codegen": "buf generate",
+    "graph": "nx graph",
+    "affected": "nx affected -t lint test build",
+    "build": "nx run-many -t build"
+  },
+  "devDependencies": {
+    "@nx/next": "21.0.0",
+    "nx": "21.0.0",
+    "prettier": "3.3.3",
+    "typescript": "5.6.2"
+  }
+}

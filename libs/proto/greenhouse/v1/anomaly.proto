@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package greenhouse.v1;
+
+import "google/protobuf/timestamp.proto";
+import "greenhouse/v1/telemetry.proto";
+
+enum AnomalySeverity {
+  ANOMALY_SEVERITY_UNSPECIFIED = 0;
+  ANOMALY_SEVERITY_INFO = 1;
+  ANOMALY_SEVERITY_WARNING = 2;
+  ANOMALY_SEVERITY_CRITICAL = 3;
+}
+
+// A reading the ML model flagged as deviating from expected behaviour.
+message Anomaly {
+  string sensor_id = 1;
+  AnomalySeverity severity = 2;
+  string description = 3;
+  double observed_value = 4;
+  double expected_value = 5;
+  // Model confidence in the range [0, 1].
+  double score = 6;
+  google.protobuf.Timestamp detected_at = 7;
+}
+
+message DetectAnomaliesRequest {
+  repeated SensorReading readings = 1;
+}
+
+message DetectAnomaliesResponse {
+  repeated Anomaly anomalies = 1;
+}
+
+// Implemented by the Python anomaly-detector ML module. The Go api-gateway
+// calls it to score incoming telemetry.
+service AnomalyDetectionService {
+  rpc DetectAnomalies(DetectAnomaliesRequest) returns (DetectAnomaliesResponse);
+}

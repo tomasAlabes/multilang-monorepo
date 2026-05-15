@@ -1,0 +1,6 @@
+# Only TypeScript projects are pnpm workspace members. pnpm silently skips
+# directories without a package.json, so the Go and Python libs under libs/
+# are ignored here and managed by go.work / uv instead.
+packages:
+  - 'apps/*'
+  - 'libs/*'

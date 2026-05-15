@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package greenhouse.v1;
+
+import "google/protobuf/timestamp.proto";
+import "greenhouse/v1/greenhouse.proto";
+
+// A single timestamped measurement from a sensor.
+message SensorReading {
+  string sensor_id = 1;
+  SensorType type = 2;
+  double value = 3;
+  string unit = 4;
+  google.protobuf.Timestamp observed_at = 5;
+}
+
+message IngestReadingsRequest {
+  repeated SensorReading readings = 1;
+}
+
+message IngestReadingsResponse {
+  uint32 accepted = 1;
+  uint32 rejected = 2;
+}
+
+message GetLatestReadingRequest {
+  string sensor_id = 1;
+}
+
+message GetLatestReadingResponse {
+  SensorReading reading = 1;
+}
+
+// Implemented by the Go ingest-service. Field gateways stream sensor
+// readings in; other services query the latest known value.
+service TelemetryService {
+  // Bulk ingest of buffered readings from a field gateway.
+  rpc IngestReadings(IngestReadingsRequest) returns (IngestReadingsResponse);
+
+  // Client-streaming push for always-connected edge devices.
+  rpc StreamReadings(stream SensorReading) returns (IngestReadingsResponse);
+
+  // Latest reading for a sensor, consumed by the api-gateway.
+  rpc GetLatestReading(GetLatestReadingRequest) returns (GetLatestReadingResponse);
+}

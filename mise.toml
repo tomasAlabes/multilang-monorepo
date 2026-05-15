@@ -1,0 +1,9 @@
+# Single source of truth for toolchain versions across every language.
+# `mise install` provisions all of these; CI pins the same versions.
+[tools]
+node = "22"
+pnpm = "9"
+go = "1.24"
+python = "3.12"
+uv = "latest"
+buf = "latest"
