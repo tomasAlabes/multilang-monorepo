@@ -8,14 +8,13 @@
   },
   "scripts": {
     "codegen": "buf generate",
-    "graph": "nx graph",
-    "affected": "nx affected -t lint test build",
-    "build": "nx run-many -t build"
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
   },
   "devDependencies": {
-    "@nx/next": "21.0.0",
-    "nx": "21.0.0",
     "prettier": "3.3.3",
+    "turbo": "2.1.3",
     "typescript": "5.6.2"
   }
 }

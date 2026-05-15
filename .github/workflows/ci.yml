@@ -5,33 +5,65 @@ on:
     branches: [main]
   pull_request:
 
-# Cancel superseded runs for the same branch/PR.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  affected:
+  # Single source of "what changed". dorny/paths-filter evaluates the
+  # dependency map in .github/filters.yaml; the YAML anchors make a
+  # libs/proto change light up every downstream project's output.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ingest-service: ${{ steps.filter.outputs.ingest-service }}
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      anomaly-detector: ${{ steps.filter.outputs.anomaly-detector }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+  # Each job below runs ONLY when the diff touched that project or one of
+  # its declared dependencies. This is the "only affected" requirement,
+  # implemented with path filters instead of a project graph.
+  ingest-service:
+    needs: changes
+    if: ${{ needs.changes.outputs.ingest-service == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Full history so Nx can diff the PR against its base SHA.
-          fetch-depth: 0
-
-      # Resolves the correct base/head SHAs for `nx affected` on both
-      # push and pull_request events.
-      - uses: nrwl/nx-set-shas@v4
-
-      # --- toolchains: one runner builds all three languages ---
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: make build-ingest-service test-ingest-service
+
+  api-gateway:
+    needs: changes
+    if: ${{ needs.changes.outputs.api-gateway == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: make build-api-gateway test-api-gateway
+
+  anomaly-detector:
+    needs: changes
+    if: ${{ needs.changes.outputs.anomaly-detector == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: '3.12'
@@ -39,21 +71,21 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+      - run: make build-anomaly-detector test-anomaly-detector
 
+  dashboard:
+    needs: changes
+    if: ${{ needs.changes.outputs.dashboard == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
       - run: pnpm install --frozen-lockfile
-
-      # The core of the "only affected" requirement.
-      #
-      # `nx affected` walks the project graph and runs targets ONLY for
-      # projects touched by this diff -- plus everything downstream of them.
-      # Because models-ts / models-go / models-py declare an implicit
-      # dependency on `proto`, editing a .proto file marks the models
-      # libraries affected, which in turn marks every service and app that
-      # consumes them. One command, dependency-aware, all languages.
-      - name: Run affected targets
-        run: pnpm exec nx affected -t codegen lint test build --parallel=3
-
-      # Optional: surface the cascade in the run logs.
-      - name: Print affected projects
-        if: always()
-        run: pnpm exec nx show projects --affected || true
+      - run: make build-dashboard

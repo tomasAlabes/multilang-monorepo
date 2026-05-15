@@ -1,30 +1,37 @@
-# Greenhouse Monitoring — polyglot monorepo
+# Greenhouse Monitoring — polyglot monorepo (native-tooling variant)
+
+> This is the **`experiment/native-paths-filter`** branch. It builds the
+> exact same modules as `main` but **without Nx** — each language keeps its
+> native tooling, glued by a `Makefile`, with CI driven by path filters.
+> See `main` for the Nx version and compare: `git diff main HEAD`.
 
 A sample monorepo for a greenhouse climate-monitoring platform, spanning
-three languages with shared contracts and an affected-aware CI pipeline.
+three languages with shared contracts.
 
 | Layer        | Tech                                  | Projects                          |
 | ------------ | ------------------------------------- | --------------------------------- |
 | Frontend     | Next.js (App Router) + React 19       | `apps/dashboard`                  |
-| Services     | Go 1.24, gRPC + GraphQL               | `services/ingest-service`, `services/api-gateway` |
+| Services     | Go 1.25, gRPC + GraphQL               | `services/ingest-service`, `services/api-gateway` |
 | ML           | Python 3.12, gRPC                     | `ml/anomaly-detector`             |
 | Contracts    | Protobuf (Buf) + GraphQL SDL          | `libs/proto`, `libs/graphql-schema` |
 | Shared code  | Generated models + common libs        | `libs/models-*`, `libs/common-*`, `libs/ui` |
 
-## Layout
+## Orchestration — no Nx
 
-```
-apps/dashboard           Next.js frontend
-services/                Go services
-  ingest-service           gRPC TelemetryService — sensor ingest
-  api-gateway              GraphQL BFF — fans out to gRPC
-ml/anomaly-detector      Python gRPC AnomalyDetectionService
-libs/
-  proto                  gRPC contracts + domain model (source of truth)
-  graphql-schema         public GraphQL API contract
-  models-ts/go/py        GENERATED types — one per language
-  common-ts/go/py        shared utilities, one per language
-  ui                     shared React component library
+| Concern                 | Tool                                              |
+| ----------------------- | ------------------------------------------------- |
+| TypeScript task graph   | **Turborepo** (`turbo.json`)                      |
+| Go modules              | **`go.work`** workspace                           |
+| Python packages         | **`uv`** workspace (`pyproject.toml`)             |
+| Protobuf codegen        | **Buf** (`buf.yaml`, `buf.gen.yaml`)              |
+| Cross-language entry    | **`Makefile`**                                    |
+| CI affected-detection   | **`dorny/paths-filter`** + `.github/filters.yaml` |
+
+```bash
+make install      # pnpm install + go work sync + uv sync
+make codegen      # buf generate -> models-ts/go/py
+make build        # turbo (TS) + go build + uv build
+make test
 ```
 
 ## Architecture
@@ -42,74 +49,60 @@ libs/
                      └─────────────────┘          └────────────────────┘
 ```
 
-- **gRPC** is the internal service-to-service contract (`libs/proto`).
-- **GraphQL** is the public, frontend-facing contract (`libs/graphql-schema`),
-  served by the gateway in a Backend-for-Frontend pattern.
+gRPC (`libs/proto`) is the internal contract; GraphQL (`libs/graphql-schema`)
+is the public, frontend-facing contract served by the gateway (BFF).
 
-## Shared code & generated models
+## The affected graph — done by hand
 
-`libs/proto` is the **single source of truth** for the domain model. Running
-`buf generate` (`nx codegen proto`) fans it out into three generated
-libraries — `models-ts`, `models-go`, `models-py` — one per language. The
-generated code is **committed** (see `libs/models-ts/README.md`); the
-`codegen-verify` CI job fails any PR that edits a `.proto` without
-regenerating.
+This is the key difference from the Nx branch. There is **no single
+cross-language project graph**:
 
-## The affected graph (build only what changed)
-
-Nx maintains a project graph across all three languages:
-
-- **TypeScript** edges are inferred from imports.
-- **Go / Python** edges are declared explicitly via `implicitDependencies`
-  in each `project.json` (Nx cannot parse those import graphs).
+- **Turborepo** computes affected projects *within TypeScript* from
+  `package.json` dependencies — but it cannot see the `proto → models-ts`
+  edge, because no JS dependency expresses it.
+- So `.github/filters.yaml` encodes the **full dependency map by hand**.
+  Each project's filter lists its own paths *plus its dependencies' paths*.
+  YAML anchors make the cascade DRY — `libs/proto` is referenced (via the
+  `&proto` anchor) by every downstream filter, so a proto change triggers
+  every dependent CI job:
 
 ```
-proto ──▶ models-ts ──▶ ui ──▶ dashboard
-      ├─▶ models-go ──▶ ingest-service
-      │             └─▶ api-gateway
-      └─▶ models-py ──▶ anomaly-detector
-
-graphql-schema ──▶ api-gateway
-               └─▶ dashboard
+proto ──▶ models-ts  ──▶ dashboard
+      ├─▶ models-go  ──▶ ingest-service, api-gateway
+      └─▶ models-py  ──▶ anomaly-detector
 ```
 
-Because every `models-*` library declares `implicitDependencies: ["proto"]`,
-**editing a `.proto` file cascades to every service and app downstream** —
-exactly the "auto-gen models change ⇒ dependents rebuild" requirement.
-Inspect it with `pnpm graph` (`nx graph`).
+**Trade-off:** this map must be kept in sync with real dependencies
+manually. Miss an edge and CI silently skips an affected project — the
+failure mode Nx's inferred graph removes. That is the cost of dropping Nx.
 
 ## CI — `.github/workflows/`
 
-- **`ci.yml`** — runs `nx affected -t codegen lint test build`. Only
-  projects touched by the diff (plus everything downstream) are built. One
-  proto change rebuilds all three languages; a change isolated to
-  `apps/dashboard` rebuilds only the dashboard. `nrwl/nx-set-shas` computes
-  the correct base/head SHAs for push and PR events.
+- **`ci.yml`** — a `changes` job runs `dorny/paths-filter`; one job per
+  service/app runs only when `if: needs.changes.outputs.<project> == 'true'`.
+  Each job sets up just the toolchain it needs and calls a `make` target.
 - **`codegen-verify.yml`** — on proto changes: lint, format, breaking-change
   detection, and a stale-generated-code check.
 
-## Getting started
+## Shared code & generated models
 
-```bash
-mise install            # Node, pnpm, Go, Python, uv, buf
-pnpm install
-nx codegen proto        # buf generate -> models-ts/go/py
-nx run-many -t build    # or: nx affected -t build
-docker compose up       # full local stack
-```
+`libs/proto` is the single source of truth for the domain model. `buf
+generate` fans it out into `models-ts`, `models-go`, `models-py`. Generated
+code is committed; `codegen-verify` fails any PR that edits a `.proto`
+without regenerating.
 
-> Service code that imports generated types compiles only **after**
-> `nx codegen proto` has run. The committed placeholders keep import paths
-> resolvable on a fresh clone.
+> Module-level READMEs reference `nx <target> <project>` commands (shared
+> with the `main` branch). The equivalent here is the matching `make`
+> target — e.g. `nx build ingest-service` → `make build-ingest-service`.
+
+## Note on lockfiles
+
+`pnpm-lock.yaml` is inherited from `main` and still pins Nx rather than
+Turborepo. On this illustrative branch run `pnpm install` once to re-resolve
+it against this `package.json`. The Go (`go.sum`) and Python (`uv.lock`)
+lockfiles are orchestrator-agnostic and need no change.
 
 ## Toolchain
 
-Node 22 · pnpm 9 · Go 1.24 · Python 3.12 · Nx 21 · Buf v2 — all pinned in
+Node 22 · pnpm 9 · Go 1.25 · Python 3.12 · Turborepo 2 · Buf v2 — pinned in
 `mise.toml`.
-
-## Alternative orchestration branch
-
-The branch **`experiment/native-paths-filter`** implements the same modules
-without Nx: per-language native tooling (Turborepo, `go.work`, `uv`) glued by
-a `Makefile`, with CI using `dorny/paths-filter` and a hand-maintained
-dependency map. Compare the two to see the trade-off — `git diff main experiment/native-paths-filter`.

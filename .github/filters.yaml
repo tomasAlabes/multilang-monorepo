@@ -1,0 +1,56 @@
+# Path-based change detection for dorny/paths-filter.
+#
+# Each filter lists the paths whose change should trigger that project's CI
+# job. Unlike an Nx project graph, the cross-project (and cross-language)
+# dependency edges are encoded BY HAND here. YAML anchors keep the cascade
+# DRY: editing libs/proto matches the &proto anchor, which is referenced by
+# every downstream filter -- so a proto change triggers every dependent job.
+#
+# Trade-off vs. Nx: this map must be kept in sync with real dependencies
+# manually. Forget to add an edge and CI silently skips an affected project.
+
+# --- shared roots, cascaded into dependents below ---
+_proto: &proto
+  - 'libs/proto/**'
+  - 'buf.yaml'
+  - 'buf.gen.yaml'
+
+_graphql: &graphql
+  - 'libs/graphql-schema/**'
+
+_common_go: &common_go
+  - 'libs/common-go/**'
+
+_common_ts: &common_ts
+  - 'libs/common-ts/**'
+  - 'libs/ui/**'
+
+_common_py: &common_py
+  - 'libs/common-py/**'
+
+# --- contracts ---
+proto: *proto
+graphql-schema: *graphql
+
+# --- services / apps (each lists its own path + every dependency) ---
+ingest-service:
+  - 'services/ingest-service/**'
+  - *common_go
+  - *proto                       # models-go is generated from proto
+
+api-gateway:
+  - 'services/api-gateway/**'
+  - *common_go
+  - *proto                       # models-go (gRPC clients)
+  - *graphql                     # gqlgen server
+
+anomaly-detector:
+  - 'ml/anomaly-detector/**'
+  - *common_py
+  - *proto                       # models-py is generated from proto
+
+dashboard:
+  - 'apps/dashboard/**'
+  - *common_ts
+  - *proto                       # models-ts is generated from proto
+  - *graphql                     # graphql-codegen client

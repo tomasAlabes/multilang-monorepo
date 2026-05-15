@@ -10,9 +10,12 @@ bin/
 out/
 *.tsbuildinfo
 
-# Nx
-.nx/cache
-.nx/workspace-data
+# Turborepo
+.turbo
+
+# Nx cache — not used on this branch, but may exist if the `main` branch
+# was built in the same working directory.
+.nx/
 
 # Go
 *.test
