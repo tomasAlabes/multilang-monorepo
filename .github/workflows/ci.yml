@@ -5,55 +5,39 @@ on:
     branches: [main]
   pull_request:
 
-# Cancel superseded runs for the same branch/PR.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  affected:
+  pants:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full history so Nx can diff the PR against its base SHA.
-          fetch-depth: 0
+          fetch-depth: 0  # full history so --changed-since can diff
 
-      # Resolves the correct base/head SHAs for `nx affected` on both
-      # push and pull_request events.
-      - uses: nrwl/nx-set-shas@v4
-
-      # --- toolchains: one runner builds all three languages ---
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      # Installs Pants and wires the GitHub Actions cache into Pants's
+      # fine-grained named caches (pip downloads, Go SDK, pnpm store, ...).
+      - uses: pantsbuild/actions/init-pants@v8
         with:
-          node-version: 22
-          cache: pnpm
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: '3.12'
-          enable-cache: true
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
+          gha-cache-key: pants-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/python/*.lock', '**/go.sum', 'pnpm-lock.yaml') }}
 
-      - run: pnpm install --frozen-lockfile
+      # BUILD-file hygiene: fail the build if `tailor` would add or change
+      # any BUILD file (i.e. someone added code without a target).
+      - name: Verify BUILD files
+        run: pants tailor --check update-build-files --check ::
 
-      # The core of the "only affected" requirement.
-      #
-      # `nx affected` walks the project graph and runs targets ONLY for
-      # projects touched by this diff -- plus everything downstream of them.
-      # Because models-ts / models-go / models-py declare an implicit
-      # dependency on `proto`, editing a .proto file marks the models
-      # libraries affected, which in turn marks every service and app that
-      # consumes them. One command, dependency-aware, all languages.
-      - name: Run affected targets
-        run: pnpm exec nx affected -t codegen lint test build --parallel=3
-
-      # Optional: surface the cascade in the run logs.
-      - name: Print affected projects
-        if: always()
-        run: pnpm exec nx show projects --affected || true
+      # Affected-only. `--changed-since` walks the git diff; Pants maps the
+      # changed files to targets, and `--changed-dependents=transitive`
+      # pulls in everything downstream via the INFERRED graph. Editing a
+      # .proto reaches every Go/Python service automatically — there is no
+      # implicitDependencies (Nx) and no filters.yaml (native branch).
+      - name: Lint / typecheck / test / package affected targets
+        env:
+          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          pants --changed-since="$DIFF_BASE" \
+                --changed-dependents=transitive \
+                lint check test package

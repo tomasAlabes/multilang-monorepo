@@ -10,9 +10,10 @@ bin/
 out/
 *.tsbuildinfo
 
-# Nx
-.nx/cache
-.nx/workspace-data
+# Pants
+/.pants.d/
+/.pids
+.pants.workdir.file_lock*
 
 # Go
 *.test
@@ -31,5 +32,9 @@ __pycache__/
 *.log
 .DS_Store
 
-# NOTE: generated protobuf code is intentionally committed.
-# See libs/models-*/README.md for the rationale.
+# Nx cache — not used on this branch, but may exist if the `main` branch
+# was built in the same working directory.
+.nx/
+
+# NOTE: generated protobuf code is committed here for parity with the other
+# branches. Idiomatic Pants would .gitignore it — see README.

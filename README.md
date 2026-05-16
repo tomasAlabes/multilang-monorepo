@@ -1,30 +1,55 @@
-# Greenhouse Monitoring — polyglot monorepo
+# Greenhouse Monitoring — polyglot monorepo (Pants variant)
+
+> This is the **`experiment/pants`** branch. Same modules as `main`, but
+> orchestrated by [Pants](https://www.pantsbuild.org/) instead of Nx.
+> Compare: `git diff main HEAD`. See also `experiment/native-paths-filter`.
 
 A sample monorepo for a greenhouse climate-monitoring platform, spanning
-three languages with shared contracts and an affected-aware CI pipeline.
+three languages with shared contracts.
 
 | Layer        | Tech                                  | Projects                          |
 | ------------ | ------------------------------------- | --------------------------------- |
 | Frontend     | Next.js (App Router) + React 19       | `apps/dashboard`                  |
-| Services     | Go 1.24, gRPC + GraphQL               | `services/ingest-service`, `services/api-gateway` |
+| Services     | Go 1.25, gRPC + GraphQL               | `services/ingest-service`, `services/api-gateway` |
 | ML           | Python 3.12, gRPC                     | `ml/anomaly-detector`             |
 | Contracts    | Protobuf (Buf) + GraphQL SDL          | `libs/proto`, `libs/graphql-schema` |
 | Shared code  | Generated models + common libs        | `libs/models-*`, `libs/common-*`, `libs/ui` |
 
-## Layout
+## Why Pants here
 
-```
-apps/dashboard           Next.js frontend
-services/                Go services
-  ingest-service           gRPC TelemetryService — sensor ingest
-  api-gateway              GraphQL BFF — fans out to gRPC
-ml/anomaly-detector      Python gRPC AnomalyDetectionService
-libs/
-  proto                  gRPC contracts + domain model (source of truth)
-  graphql-schema         public GraphQL API contract
-  models-ts/go/py        GENERATED types — one per language
-  common-ts/go/py        shared utilities, one per language
-  ui                     shared React component library
+Pants's headline feature is **fine-grained dependency inference**. It parses
+imports — Python `import`, Go `import`, JS/TS `import`/`require` — and builds
+the dependency graph itself. Compared with the other branches:
+
+| | how the affected-graph is built |
+| --- | --- |
+| `main` (Nx) | TS inferred; **Go/Python edges hand-declared** in `implicitDependencies` |
+| `experiment/native-paths-filter` | **fully hand-maintained** `.github/filters.yaml` |
+| `experiment/pants` (here) | **inferred for Python and Go** — no dependency config to maintain |
+
+Add the protobuf backends and Pants even infers that a Go/Python file
+importing the generated `greenhouse.v1` package depends on `libs/proto`.
+Edit a `.proto` and every dependent service is affected automatically.
+
+## Orchestration
+
+| Concern                | Mechanism                                              |
+| ---------------------- | ------------------------------------------------------ |
+| Config                 | `pants.toml` (one file, all languages)                 |
+| Targets                | `BUILD` files — `pants tailor ::` generates most       |
+| Protobuf → Go/Python   | native Pants backends (`protobuf_sources(grpc=True)`)  |
+| Protobuf → TypeScript  | **no native backend** — `buf` wrapped as `shell_command` |
+| gRPC/GraphQL codegen   | `gqlgen` wrapped as `shell_command`                    |
+| Affected detection     | `pants --changed-since --changed-dependents=transitive`|
+| Caching                | per-target local cache + optional remote cache         |
+
+```bash
+pants tailor ::                       # generate/refresh BUILD files
+pants lint check test ::              # everything
+pants --changed-since=origin/main \
+      --changed-dependents=transitive \
+      lint check test package         # affected only (what CI runs)
+pants run ml/anomaly-detector/src/anomaly_detector:server
 ```
 
 ## Architecture
@@ -42,74 +67,54 @@ libs/
                      └─────────────────┘          └────────────────────┘
 ```
 
-- **gRPC** is the internal service-to-service contract (`libs/proto`).
-- **GraphQL** is the public, frontend-facing contract (`libs/graphql-schema`),
-  served by the gateway in a Backend-for-Frontend pattern.
+gRPC (`libs/proto`) is the internal contract; GraphQL (`libs/graphql-schema`)
+is the public, frontend-facing contract served by the gateway (BFF).
 
-## Shared code & generated models
+## BUILD files
 
-`libs/proto` is the **single source of truth** for the domain model. Running
-`buf generate` (`nx codegen proto`) fans it out into three generated
-libraries — `models-ts`, `models-go`, `models-py` — one per language. The
-generated code is **committed** (see `libs/models-ts/README.md`); the
-`codegen-verify` CI job fails any PR that edits a `.proto` without
-regenerating.
+Pants targets live in `BUILD` files next to the code. `pants tailor ::`
+generates the routine ones (`python_sources`, `python_tests`, `go_package`,
+`go_binary`); this scaffold hand-writes only the targets that need
+configuration:
 
-## The affected graph (build only what changed)
+- `libs/proto/greenhouse/v1/BUILD` — `protobuf_sources(grpc=True)`
+- `libs/{common,models}-go/BUILD`, `services/*/BUILD` — `go_mod`
+- `ml/anomaly-detector/.../BUILD` — `python_sources`, `python_tests`, `pex_binary`
+- `apps/dashboard`, `libs/{ui,common-ts,models-ts}/BUILD` — `package_json`
+- `shell_command` targets wrap `buf` (TS codegen) and `gqlgen`
+- `docker_image` targets for each service
 
-Nx maintains a project graph across all three languages:
+CI runs `pants tailor --check` so a PR that adds code without a target fails.
 
-- **TypeScript** edges are inferred from imports.
-- **Go / Python** edges are declared explicitly via `implicitDependencies`
-  in each `project.json` (Nx cannot parse those import graphs).
+## Honest trade-offs
 
-```
-proto ──▶ models-ts ──▶ ui ──▶ dashboard
-      ├─▶ models-go ──▶ ingest-service
-      │             └─▶ api-gateway
-      └─▶ models-py ──▶ anomaly-detector
+Pants is not a free win for this stack:
 
-graphql-schema ──▶ api-gateway
-               └─▶ dashboard
-```
+- **Python**: first-class — inference, lockfiles, PEX packaging, the works.
+- **Go**: solid, including native protobuf codegen.
+- **JavaScript/TypeScript**: the backends are **experimental**. Next.js
+  builds and `graphql-codegen` are driven through `package.json` scripts /
+  `shell_command`s, so the TS side gets coarser caching than the Go/Python
+  side. Nx (`main`) remains stronger for the frontend.
+- **Protobuf → TypeScript**: no Pants backend exists; `buf` is wrapped as a
+  `shell_command`.
+- **Learning curve**: `BUILD` files, resolves, and the daemon are a real
+  ramp-up cost versus per-language native tools.
 
-Because every `models-*` library declares `implicitDependencies: ["proto"]`,
-**editing a `.proto` file cascades to every service and app downstream** —
-exactly the "auto-gen models change ⇒ dependents rebuild" requirement.
-Inspect it with `pnpm graph` (`nx graph`).
+## Generated code
 
-## CI — `.github/workflows/`
-
-- **`ci.yml`** — runs `nx affected -t codegen lint test build`. Only
-  projects touched by the diff (plus everything downstream) are built. One
-  proto change rebuilds all three languages; a change isolated to
-  `apps/dashboard` rebuilds only the dashboard. `nrwl/nx-set-shas` computes
-  the correct base/head SHAs for push and PR events.
-- **`codegen-verify.yml`** — on proto changes: lint, format, breaking-change
-  detection, and a stale-generated-code check.
-
-## Getting started
-
-```bash
-mise install            # Node, pnpm, Go, Python, uv, buf
-pnpm install
-nx codegen proto        # buf generate -> models-ts/go/py
-nx run-many -t build    # or: nx affected -t build
-docker compose up       # full local stack
-```
-
-> Service code that imports generated types compiles only **after**
-> `nx codegen proto` has run. The committed placeholders keep import paths
-> resolvable on a fresh clone.
+Idiomatically, Pants treats codegen as a build action: you would **not**
+commit `libs/models-*/**` generated output — Pants regenerates it from the
+`protobuf_source` targets and `pants export-codegen ::` materialises it for
+IDEs. For parity with the other branches in this sample, the generated code
+is left committed here; in a real Pants repo, `.gitignore` it.
 
 ## Toolchain
 
-Node 22 · pnpm 9 · Go 1.24 · Python 3.12 · Nx 21 · Buf v2 — all pinned in
-`mise.toml`.
+Pants 2.27 · Go 1.25 · Python 3.12 · Node 22 · Buf v2. Pants provisions the
+Python interpreter and Go SDK itself; Node/pnpm are pinned in `mise.toml`.
 
-## Alternative orchestration branch
-
-The branch **`experiment/native-paths-filter`** implements the same modules
-without Nx: per-language native tooling (Turborepo, `go.work`, `uv`) glued by
-a `Makefile`, with CI using `dorny/paths-filter` and a hand-maintained
-dependency map. Compare the two to see the trade-off — `git diff main experiment/native-paths-filter`.
+> Like `experiment/native-paths-filter`, this branch is a **structured
+> scaffold** — the `pants.toml`, `BUILD` files and CI show the shape of a
+> Pants setup but have not been run end-to-end here. `main` is the verified,
+> buildable branch.
