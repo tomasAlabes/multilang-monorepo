@@ -107,9 +107,19 @@ docker compose up       # full local stack
 Node 22 · pnpm 9 · Go 1.24 · Python 3.12 · Nx 21 · Buf v2 — all pinned in
 `mise.toml`.
 
-## Alternative orchestration branch
+## Alternative orchestration branches
 
-The branch **`experiment/native-paths-filter`** implements the same modules
-without Nx: per-language native tooling (Turborepo, `go.work`, `uv`) glued by
-a `Makefile`, with CI using `dorny/paths-filter` and a hand-maintained
-dependency map. Compare the two to see the trade-off — `git diff main experiment/native-paths-filter`.
+The same modules are scaffolded under two other build systems, so the
+orchestration layer can be compared directly:
+
+- **`experiment/native-paths-filter`** — no framework: per-language native
+  tooling (Turborepo, `go.work`, `uv`) glued by a `Makefile`, with CI using
+  `dorny/paths-filter` and a hand-maintained dependency map.
+- **`experiment/pants`** — [Pants](https://www.pantsbuild.org/): the
+  affected-graph is *inferred* from imports across Python and Go (no
+  `implicitDependencies`, no filters), at the cost of experimental JS/TS
+  support.
+
+Compare with `git diff main experiment/native-paths-filter` or
+`git diff main experiment/pants`. `main` (Nx) is the verified, buildable
+branch; the other two are structured scaffolds.
