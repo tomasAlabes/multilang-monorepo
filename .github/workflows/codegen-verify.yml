@@ -19,9 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
+      # buf comes from mise.toml -- the same version used locally and in the
+      # CI workflow, so generated output can't go stale on a tool-version
+      # mismatch alone.
+      - uses: jdx/mise-action@v2
 
       - name: Lint protos
         run: buf lint

@@ -30,28 +30,39 @@ jobs:
       # push and pull_request events.
       - uses: nrwl/nx-set-shas@v5
 
-      # --- toolchains: one runner builds all three languages ---
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      # One runner builds all three languages. mise installs every tool
+      # (node, pnpm, go, python, uv, buf) from mise.toml -- the same pins
+      # used locally, so CI and dev can't drift on tool versions.
+      # mise-action caches the installed tools; the per-language *dependency*
+      # caches it does NOT cover are declared explicitly below.
+      - uses: jdx/mise-action@v2
+
+      # --- dependency caches ---
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - uses: actions/setup-go@v6
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Cache Go build and module cache
+        uses: actions/cache@v4
         with:
-          go-version: '1.25'
           # No go.sum at the repo root -- this is a go.work workspace, so the
           # module checksums live in each module's subdirectory.
-          cache-dependency-path: '**/go.sum'
-      - uses: astral-sh/setup-uv@v7
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+      - name: Cache uv cache
+        uses: actions/cache@v4
         with:
-          python-version: '3.12'
-          enable-cache: true
-          # `nx affected` may run no Python targets on a given PR, leaving the
-          # uv cache dir empty; don't fail the post-job cache-save when so.
-          ignore-nothing-to-cache: true
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
 
