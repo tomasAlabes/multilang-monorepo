@@ -10,6 +10,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# nrwl/nx-set-shas reads the Actions API to find the last successful run,
+# which needs `actions: read`. Declared explicitly so the job works even
+# when the repo/org default GITHUB_TOKEN permissions are restricted.
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   affected:
     runs-on: ubuntu-latest
