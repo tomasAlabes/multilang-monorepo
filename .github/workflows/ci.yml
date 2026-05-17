@@ -28,10 +28,10 @@ jobs:
 
       # Resolves the correct base/head SHAs for `nx affected` on both
       # push and pull_request events.
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       # --- toolchains: one runner builds all three languages ---
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -42,7 +42,7 @@ jobs:
           # No go.sum at the repo root -- this is a go.work workspace, so the
           # module checksums live in each module's subdirectory.
           cache-dependency-path: '**/go.sum'
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
           enable-cache: true
