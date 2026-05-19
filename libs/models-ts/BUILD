@@ -8,7 +8,12 @@ shell_command(
     name="protobuf-ts",
     command="buf generate",
     tools=["buf"],
-    execution_dependencies=["//libs/proto/greenhouse/v1:v1"],
-    output_directories=["src/gen"],
+    execution_dependencies=[
+        "//libs/proto/greenhouse/v1:v1",
+        "//:buf-config",
+    ],
+    # buf.gen.yaml writes to libs/models-ts/src/gen relative to the repo
+    # root, which is the sandbox root when workdir=".".
+    output_directories=["libs/models-ts/src/gen"],
     workdir=".",
 )

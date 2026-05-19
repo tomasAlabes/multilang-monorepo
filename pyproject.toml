@@ -13,3 +13,18 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["libs", "ml"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+
+[[tool.mypy.overrides]]
+# Pants-generated protobuf/gRPC stubs always have type issues in older
+# protobuf output formats; skip type-checking them entirely.
+module = ["greenhouse.v1.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# grpcio doesn't ship inline types; suppress missing-stub errors on import sites.
+module = ["grpc", "grpc.*"]
+ignore_missing_imports = true
