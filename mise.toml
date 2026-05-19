@@ -2,7 +2,7 @@
 # `mise install` provisions all of these; CI pins the same versions.
 [tools]
 node = "22"
-pnpm = "11.12.0"
+pnpm = "11.1.3"
 go = "1.25"
 python = "3.12"
 uv = "latest"
