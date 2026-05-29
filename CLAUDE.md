@@ -37,6 +37,7 @@ libs/proto                           protobuf contracts — SOURCE OF TRUTH
 libs/graphql-schema                  public GraphQL SDL
 libs/models-{ts,go,py}               generated types, one per language
 libs/common-{ts,go,py}, libs/ui      shared code
+infra/{modules,live}                 Terragrunt (Terraform) — IaC sample
 ```
 
 ## Commands (main / Nx branch)
@@ -52,6 +53,9 @@ mise exec -- pnpm exec nx show projects --affected --files=<path>
 - Go (workspace mode forbids `-mod=mod`; tidy each module standalone):
   `cd services/<svc> && mise exec -- env GOWORK=off go mod tidy && go build ./...`
 - Python tests: `mise exec -- uv run pytest ml/anomaly-detector`
+- Infra (Terragrunt): `mise exec -- pnpm exec nx run infra:plan` (also
+  `validate`, `apply`, `destroy`, `fmt`). Credential-free sample — local
+  backend + `null`/`local` providers. See `infra/README.md`.
 
 ## Conventions
 

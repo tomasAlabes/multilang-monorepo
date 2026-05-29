@@ -1,0 +1,43 @@
+{
+  "name": "infra",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:infra", "lang:terraform"],
+  "targets": {
+    "fmt": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mise exec -- terragrunt hcl format",
+        "cwd": "infra"
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mise exec -- terragrunt run --non-interactive validate",
+        "cwd": "infra/live/dev/deployment-manifest"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mise exec -- terragrunt run --non-interactive plan",
+        "cwd": "infra/live/dev/deployment-manifest"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mise exec -- terragrunt run --non-interactive -- apply -auto-approve",
+        "cwd": "infra/live/dev/deployment-manifest"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mise exec -- terragrunt run --non-interactive -- destroy -auto-approve",
+        "cwd": "infra/live/dev/deployment-manifest"
+      }
+    }
+  }
+}
