@@ -25,6 +25,9 @@ libs/
   models-ts/go/py        GENERATED types — one per language
   common-ts/go/py        shared utilities, one per language
   ui                     shared React component library
+infra/                   Terragrunt (Terraform) — credential-free IaC sample
+  modules/                 reusable Terraform module
+  live/dev/                the deployment-manifest unit
 ```
 
 ## Architecture
@@ -78,6 +81,11 @@ Because every `models-*` library declares `implicitDependencies: ["proto"]`,
 exactly the "auto-gen models change ⇒ dependents rebuild" requirement.
 Inspect it with `pnpm graph` (`nx graph`).
 
+`infra` is a first-class Nx project too: Terragrunt (which has no Nx plugin)
+is wrapped via `nx:run-commands` — `nx run infra:plan|apply|validate|fmt` — the
+same way the Go/Python projects are. It is standalone (no `implicitDependencies`);
+see `infra/README.md`.
+
 ## CI — `.github/workflows/`
 
 - **`ci.yml`** — runs `nx affected -t codegen lint test build`. Only
@@ -104,8 +112,8 @@ docker compose up       # full local stack
 
 ## Toolchain
 
-Node 22 · pnpm 9 · Go 1.24 · Python 3.12 · Nx 21 · Buf v2 — all pinned in
-`mise.toml`.
+Node 22 · pnpm 9 · Go 1.24 · Python 3.12 · Nx 21 · Buf v2 · Terraform 1.14.7 ·
+Terragrunt 0.99.4 — all pinned in `mise.toml`.
 
 ## Alternative orchestration branches
 
