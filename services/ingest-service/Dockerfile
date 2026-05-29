@@ -1,10 +1,10 @@
-# Build context is the repo ROOT (see docker-compose.yml) so the build can
-# see go.work and the intra-repo modules this service depends on.
+# Build context is the repo ROOT (see docker-compose.yml) so the build can see
+# the single root go.mod and the first-party packages this service imports.
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 
-# Copy the workspace file and only the modules this service needs.
-COPY go.work ./
+# Copy the root module manifest and only the packages this service needs.
+COPY go.mod go.sum ./
 COPY libs/common-go ./libs/common-go
 COPY libs/models-go ./libs/models-go
 COPY services/ingest-service ./services/ingest-service

@@ -1,15 +1,13 @@
-go_mod(name="mod")
-
-# gqlgen has no native Pants backend; it is wrapped as a shell_command so it
-# still participates in the graph and cache. It depends on the GraphQL
-# contract, so a schema change reruns it.
-shell_command(
+# gqlgen has no native Pants backend. `go tool gqlgen` resolves through the
+# `tool` directive in the root go.mod, which needs the real go.mod/go.sum
+# and module cache — none of which exist in a sandboxed shell_command. Like
+# the infra targets (and unlike the self-contained `buf` codegen, which uses
+# remote plugins), it therefore runs in the workspace as a run_shell_command.
+# Regenerate the resolvers with `pants run services/api-gateway:gqlgen`.
+run_shell_command(
     name="gqlgen",
     command="go tool gqlgen generate",
-    tools=["go"],
     execution_dependencies=["//libs/graphql-schema:schema"],
-    output_directories=["internal/graph", "internal/resolvers"],
-    workdir=".",
 )
 
 docker_image(

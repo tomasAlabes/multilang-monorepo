@@ -10,7 +10,7 @@ python_requirements(
 # hitting PyPI.
 python_distribution(
     name="dist",
-    dependencies=["src/greenhouse_common"],
+    dependencies=["libs/common-py/src/greenhouse_common"],
     provides=python_artifact(
         name="greenhouse-common",
         version="0.0.0",

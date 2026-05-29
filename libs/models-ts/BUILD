@@ -12,8 +12,9 @@ shell_command(
         "//libs/proto/greenhouse/v1:v1",
         "//:buf-config",
     ],
-    # buf.gen.yaml writes to libs/models-ts/src/gen relative to the repo
-    # root, which is the sandbox root when workdir=".".
+    # buf.gen.yaml and its output paths are relative to the repo root, so the
+    # command must run there. `workdir="."` resolves to this BUILD's directory
+    # (libs/models-ts); `workdir="/"` is the repo root.
     output_directories=["libs/models-ts/src/gen"],
-    workdir=".",
+    workdir="/",
 )

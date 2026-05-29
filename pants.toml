@@ -14,9 +14,16 @@ backend_packages = [
   # JavaScript / TypeScript — experimental backends
   "pants.backend.experimental.javascript",
   "pants.backend.experimental.typescript",
-  # Protobuf codegen: native for Python (stable) and Go (experimental)
+  # Protobuf -> Python: native backend, consumed directly by the Python libs
+  # and services via dependency inference on the proto target.
+  #
+  # Protobuf -> Go and -> TypeScript are produced by `buf generate` (see the
+  # `codegen` target in the root BUILD) and committed under libs/models-go and
+  # libs/models-ts. Go consumes them through go.work / replace directives, not
+  # a native Pants backend, so the (unwired) protobuf.go backend is not
+  # enabled — leaving it on made `export-codegen` ambiguous between Go and
+  # Python while generating nothing, since no proto target sets go_mod_address.
   "pants.backend.codegen.protobuf.python",
-  "pants.backend.experimental.codegen.protobuf.go",
   # Containers + shell-wrapped tools
   "pants.backend.docker",
   "pants.backend.shell",
@@ -45,6 +52,41 @@ root_patterns = [
 [nodejs]
 package_manager = "pnpm"
 package_managers = { "pnpm" = "11.1.3" }
+
+[typescript]
+# TypeScript is built and type-checked via the per-package Next.js / tsc
+# scripts (see the package.json `build` scripts), not by Pants. The typescript
+# backend stays enabled for source targets and dependency inference, but its
+# tsc `check` is skipped — the packages use Next.js-style tsconfigs (noEmit, no
+# outDir) that Pants' standalone tsc check does not support.
+skip = true
+
+[tailor]
+# The repo-root package.json is only the pnpm workspace anchor; a package_json
+# target there is unaddressable (`//#package.json` has no name) and breaks the
+# dependency graph, so tailor must not re-add it (see the root BUILD).
+ignore_adding_targets = [
+  "//:root",
+  # anomaly-detector declares explicit python_requirement targets; a generated
+  # pyproject-sourced `reqs` set would duplicate modules other targets own.
+  "ml/anomaly-detector:reqs",
+]
+# greenhouse/v1 Python code is produced by the native protobuf backend from the
+# proto target; the committed files under this path are fresh-clone placeholders
+# (see libs/models-py/README.md). Giving them a python_sources target would make
+# the `greenhouse.v1` module ambiguous, so tailor must not own this directory.
+ignore_paths = ["libs/models-py/src/greenhouse/v1/**"]
+
+[docker]
+# Pants runs `docker build` in a sandbox with a restricted PATH. Docker Desktop
+# on macOS authenticates to registries through a credential helper (named in
+# ~/.docker/config.json `credsStore`), so without surfacing it `docker build`
+# cannot pull base images. Listed as optional so CI/Linux — which uses a
+# different helper or none — is unaffected.
+optional_tools = [
+  "docker-credential-desktop",
+  "docker-credential-osxkeychain",
+]
 
 [anonymous-telemetry]
 enabled = false

@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 
-COPY go.work ./
+COPY go.mod go.sum ./
 COPY libs/common-go ./libs/common-go
 COPY libs/models-go ./libs/models-go
 COPY services/api-gateway ./services/api-gateway

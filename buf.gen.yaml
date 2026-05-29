@@ -1,8 +1,13 @@
 # `buf generate` fans the proto sources out into three language-specific
 # "models" libraries. Remote plugins keep contributors from installing
-# protoc plugins locally. `clean: true` removes stale generated files.
+# protoc plugins locally.
+#
+# `clean` is intentionally NOT enabled: the output directories are committed
+# and carry tailored Pants BUILD files (the go_package / typescript_sources
+# targets sit next to the generated code). `clean: true` deletes the entire
+# output dir before regenerating, which would wipe those BUILD files on every
+# `pants run :codegen` and break the Go/TS build until the next `pants tailor`.
 version: v2
-clean: true
 managed:
   enabled: true
   override:

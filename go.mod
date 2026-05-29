@@ -1,13 +1,17 @@
-module github.com/greenhouse-monorepo/services/api-gateway
+// Single Go module for the whole repo. Pants resolves first-party Go imports
+// within one module; it does not follow go.work or replace directives across
+// separate modules, so every Go package here lives under this one module and
+// its import path equals its directory (e.g. libs/models-go/gen/greenhouse/v1
+// -> github.com/greenhouse-monorepo/libs/models-go/gen/greenhouse/v1).
+module github.com/greenhouse-monorepo
 
 go 1.25.0
 
 require (
 	github.com/99designs/gqlgen v0.17.90
-	github.com/greenhouse-monorepo/libs/common-go v0.0.0
-	github.com/greenhouse-monorepo/libs/models-go v0.0.0
 	github.com/vektah/gqlparser/v2 v2.5.33
 	google.golang.org/grpc v1.67.1
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -26,15 +30,6 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
-)
-
-// Intra-repo modules resolve to local source. go.work unifies them for
-// one-shot `go build ./...` and IDEs; these replace directives additionally
-// let the module build and `go mod tidy` standalone (CI, Docker).
-replace (
-	github.com/greenhouse-monorepo/libs/common-go => ../../libs/common-go
-	github.com/greenhouse-monorepo/libs/models-go => ../../libs/models-go
 )
 
 tool github.com/99designs/gqlgen
