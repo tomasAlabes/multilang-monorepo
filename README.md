@@ -152,11 +152,13 @@ generates the routine ones (`python_sources`, `python_tests`, `go_package`,
 - `infra/**/BUILD` — `run_shell_command` targets wrap `terragrunt`; side-effecting
   infra ops run in the workspace, unlike the sandboxed codegen `shell_command`s
   (see `infra/README.md`)
-- `docker_image` targets for each service. The images are built from source
-  by `docker compose` (repo-root build context); they are **not** built by
-  `pants package`, which would need the binaries cross-compiled for Linux and
-  the source staged into the sandbox. `pants package` covers the code
-  artifacts (Go binaries, Python distributions / PEX).
+- `docker_image` targets for each service and the dashboard, all built by
+  `pants package`. Each image compiles inside a build stage (so the artifact
+  targets the Linux container, not the build host), and a `files()` target
+  stages the needed source into the build context — `//:go-src` for the Go
+  services, `//:py-src` for the anomaly-detector, `//:js-src` for the dashboard
+  (Pants stages built artifacts, not raw first-party source, so the source is
+  staged explicitly). `docker compose up` builds the same Dockerfiles directly.
 
 ## Toolchain
 

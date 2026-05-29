@@ -13,4 +13,8 @@ run_shell_command(
 docker_image(
     name="image",
     source="Dockerfile",
+    repository="api-gateway",
+    # Compiles from source (incl. the committed gqlgen resolvers) in a golang
+    # build stage; //:go-src stages the Go source into the build context.
+    dependencies=["//:go-src"],
 )

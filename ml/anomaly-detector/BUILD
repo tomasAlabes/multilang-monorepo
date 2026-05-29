@@ -8,8 +8,11 @@ python_requirement(name="numpy", requirements=["numpy>=2.0"])
 python_requirement(name="scikit-learn", requirements=["scikit-learn>=1.5"])
 python_requirement(name="types-protobuf", requirements=["types-protobuf"])
 
-# Mirrors the docker_image targets on the Go services.
+# Mirrors the docker_image targets on the Go services: the build `uv sync`s
+# from source, so //:py-src stages the workspace source into the build context.
 docker_image(
     name="image",
     source="Dockerfile",
+    repository="anomaly-detector",
+    dependencies=["//:py-src"],
 )

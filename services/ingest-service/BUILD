@@ -4,4 +4,8 @@
 docker_image(
     name="image",
     source="Dockerfile",
+    repository="ingest-service",
+    # The Dockerfile compiles from source in a golang build stage; Pants fills
+    # the build context from dependencies, so stage the Go source via //:go-src.
+    dependencies=["//:go-src"],
 )
