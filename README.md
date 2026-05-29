@@ -25,6 +25,9 @@ libs/
   models-ts/go/py        GENERATED types — one per language
   common-ts/go/py        shared utilities, one per language
   ui                     shared React component library
+infra/                   Terragrunt (Terraform) — credential-free IaC sample
+  modules/                 reusable Terraform module
+  live/dev/                the deployment-manifest unit
 ```
 
 ## Architecture
@@ -87,6 +90,7 @@ Because Pants parses `import greenhouse.v1` directly from source, **editing a
 | Protobuf → Go/Python   | native Pants backends (`protobuf_sources(grpc=True)`)  |
 | Protobuf → TypeScript  | `buf` wrapped as `shell_command`                       |
 | gRPC/GraphQL codegen   | `gqlgen` wrapped as `shell_command`                    |
+| IaC (Terragrunt)       | `run_shell_command` targets (`pants run infra:…`)      |
 | Affected detection     | `pants --changed-since --changed-dependents=transitive`|
 | Caching                | per-target local cache + optional remote cache         |
 
@@ -130,13 +134,17 @@ generates the routine ones (`python_sources`, `python_tests`, `go_package`,
 - `ml/anomaly-detector/.../BUILD` — `python_sources`, `python_tests`, `pex_binary`
 - `apps/dashboard`, `libs/{ui,common-ts,models-ts}/BUILD` — `package_json`
 - `shell_command` targets wrap `buf` (TS codegen) and `gqlgen`
+- `infra/**/BUILD` — `run_shell_command` targets wrap `terragrunt`; side-effecting
+  infra ops run in the workspace, unlike the sandboxed codegen `shell_command`s
+  (see `infra/README.md`)
 - `docker_image` targets for each service
 
 ## Toolchain
 
-Pants 2.30 · Go 1.25 · Python 3.12 · Node 22 · Buf v2 — all pinned in
-`mise.toml` / `pants.toml`. Pants provisions the Python interpreter and Go
-SDK itself; Node/pnpm are managed by `mise`.
+Pants 2.30 · Go 1.25 · Python 3.12 · Node 22 · Buf v2 · Terraform 1.14.7 ·
+Terragrunt 0.99.4 — all pinned in `mise.toml` / `pants.toml`. Pants provisions
+the Python interpreter and Go SDK itself; Node/pnpm and Terraform/Terragrunt
+are managed by `mise`.
 
 ## Alternative orchestration branches
 
